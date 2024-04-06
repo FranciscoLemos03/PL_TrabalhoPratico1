@@ -1,0 +1,8 @@
+digraph grafo {
+	rankdir=LR;
+	size="8,5"
+	node [shape = doublecircle];
+	node [shape = circle];
+	q0 -> q1 [ label = "a" ];
+	q0 -> q1 [ label = "b" ];
+}

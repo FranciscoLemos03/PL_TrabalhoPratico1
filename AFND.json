@@ -1,12 +1,12 @@
 {
     "states": [
+        "q0",
         "q1",
-        "qf",
-        "q0"
+        "qf"
     ],
     "alphabet": [
-        "a",
-        "b"
+        "b",
+        "a"
     ],
     "transitions": {
         "('q0', 'a')": [
