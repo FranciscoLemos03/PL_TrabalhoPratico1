@@ -3,10 +3,6 @@ import json
 import ast
 import sys
 
-import json
-import ast
-import sys
-
 class AFD:
     def __init__(self, states, alphabet, transitions, initial_state, final_states):
         self.states = states
@@ -88,7 +84,7 @@ def gerar_grafo(nome_arquivo, afd):
         arquivo.write('digraph ' + nome_arquivo + ' {\n')
         arquivo.write('\trankdir=LR;\n')
         arquivo.write('\tsize="8,5"\n')
-        arquivo.write('\tnode [shape = doublecircle]; ' + ' '.join(afd.final_states) + ';\n')
+        arquivo.write('\tnode [shape = doublecircle]; ' + ' '.join(afd.final_states) + '\n')
         arquivo.write('\tnode [shape = circle];\n')
 
         for origem, destinos in grafo.items():
