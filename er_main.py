@@ -9,13 +9,16 @@ class AFND:
         self.final_states = final_states
 
     def to_json(self):
+        delta = {state: {symbol: self.transitions.get((state, symbol), []) for symbol in sorted(self.alphabet)} for state in sorted(self.states)}
+
         return {
-            'states': list(self.states),
-            'alphabet': list(self.alphabet),
-            'transitions': {str(k): list(v) for k, v in self.transitions.items()},
-            'initial_state': self.initial_state,
-            'final_states': list(self.final_states)
+            "V": sorted(list(self.alphabet)),
+            "Q": sorted(list(self.states)),
+            "delta": delta,
+            "q0": self.initial_state,
+            "F": sorted(list(self.final_states))
         }
+
 
 def parse_json_to_afnd(json_data):
     if 'op' in json_data:
@@ -37,15 +40,9 @@ def parse_json_to_afnd(json_data):
             
             # Adicionar transição vazia dos antigos estados finais dos AFNDs para o novo estado final
             for state in afnd1.final_states:
-                if ('',) in new_transitions:
-                    new_transitions[('',)].append('qf')
-                else:
-                    new_transitions[('',)] = ['qf']
+                new_transitions[('',)].append(state)
             for state in afnd2.final_states:
-                if ('',) in new_transitions:
-                    new_transitions[('',)].append('qf')
-                else:
-                    new_transitions[('',)] = ['qf']
+                new_transitions[('',)].append(state)
     
             return AFND(new_states, afnd1.alphabet.union(afnd2.alphabet), new_transitions, 'q0', {'qf'})
         
@@ -60,10 +57,7 @@ def parse_json_to_afnd(json_data):
     
             # Adicionar transição vazia dos antigos estados finais de afnd1 para o estado inicial de afnd2
             for state in afnd1.final_states:
-                if ('',) in new_transitions:
-                    new_transitions[('',)].append(afnd2.initial_state)
-                else:
-                    new_transitions[('',)] = [afnd2.initial_state]
+                new_transitions[('',)].append(afnd2.initial_state)
     
             return AFND(new_states, afnd1.alphabet.union(afnd2.alphabet), new_transitions, afnd1.initial_state, afnd2.final_states)
         
@@ -78,26 +72,9 @@ def parse_json_to_afnd(json_data):
             new_transitions = afnd.transitions.copy()
     
             # Adicionar transições vazias do novo estado inicial para os antigos estados iniciais e finais do AFND
-            if ('',) in new_transitions:
-                new_transitions[('',)].append(afnd.initial_state)
-            else:
-                new_transitions[('q0', '')] = [afnd.initial_state]
+            new_transitions[('q0', '')] = [afnd.initial_state]
+            new_transitions[('',)] = list(afnd.final_states) + [afnd.initial_state, 'qf']
             
-            for state in afnd.final_states:
-                if ('',) in new_transitions:
-                    new_transitions[('',)].append(state)
-                else:
-                    new_transitions[('qf', '')] = [state]
-            
-            # Adicionar transições vazias dos antigos estados finais para o antigo estado inicial e para o novo estado final
-            for state in afnd.final_states:
-                if ('',) in new_transitions:
-                    new_transitions[('',)].append(afnd.initial_state)
-                else:
-                    new_transitions[('',)] = [afnd.initial_state]
-            
-            new_transitions[('',)].append('qf')
-    
             return AFND(new_states, afnd.alphabet, new_transitions, 'q0', {'qf'})
     elif 'simb' in json_data:
         # Se o nó tiver um símbolo, este é um estado simples

@@ -19,28 +19,31 @@ class AFD:
     def to_dict(self):
         transitions_dict = {}
         for key, value in self.transitions.items():
-            # Use the string representation of the state as key
-            state_str = key
-            transitions_dict[state_str] = value
+            state_list = list(key)
+            value_dict = {}
+            for symbol, destination in value.items():
+                value_dict[symbol] = list(destination)
+            transitions_dict[state_list[0]] = value_dict
         return {
-        'states': list(self.states),  # Extract the state names
-        'alphabet': list(self.alphabet),
-        'transitions': transitions_dict,
-        'initial_state': self.initial_state,  # Extract the initial state name
-        'final_states': list(self.final_states)  # Extract the final state names
-    }
+            'states': [list(state) for state in self.states],
+            'alphabet': list(self.alphabet),
+            'transitions': transitions_dict,
+            'initial_state': list(self.initial_state)[0],
+            'final_states': [list(state) for state in self.final_states]
+        }
 
-
-
-
-
+class FrozenSetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, frozenset):
+            return list(obj)
+        return json.JSONEncoder.default(self, obj)
 
 def afnd_to_afd(afnd):
     queue = [frozenset([afnd.initial_state])]
     visited = set()
     new_states = set()
     new_transitions = {}
-    final_states = set()
+    final_states = set()  # Create an empty set for final states
 
     while queue:
         current_states = queue.pop(0)
@@ -48,42 +51,29 @@ def afnd_to_afd(afnd):
             continue
         visited.add(current_states)
 
-        new_states.add(tuple(current_states))  # Convert frozenset to tuple
-
-        if any(state in current_states for state in afnd.final_states):
-            final_states.add(tuple(current_states))  # Convert frozenset to tuple
+        new_states.add(current_states)
 
         transitions = {}
         for symbol in afnd.alphabet:
             next_states = set()
             for state in current_states:
                 next_states.update(afnd.transitions.get((state, symbol), []))
+                next_states.update(afnd.transitions.get((state, ''), []))
             if next_states:
                 next_states_frozen = frozenset(next_states)
                 if next_states_frozen not in new_states:
                     queue.append(next_states_frozen)
-                transitions[symbol] = [s.split(',')[1] if ',' in s else s for s in next_states]
+                transitions[symbol] = next_states_frozen
 
-        # Convert frozenset of states to a tuple representation
-        current_states_tuple = tuple(sorted([s.split(',')[1] if ',' in s else s for s in current_states]))
-        new_transitions[current_states_tuple] = transitions  # Use the tuple as the key
+        new_transitions[current_states] = transitions
 
-    # Convert transitions to a more conventional representation
-    afd_transitions = {}
-    for source_states, transition in new_transitions.items():
-        destination_states_map = {}
-        for symbol, destination_states in transition.items():
-            # Convert list of states to string representation
-            destination_states_str = ','.join(destination_states)
-            destination_states_map[symbol] = destination_states_str
-        # Convert tuple of states to a string representation
-        source_states_str = ','.join(sorted([s.split(',')[1] if ',' in s else s for s in source_states]))
-        afd_transitions[source_states_str] = destination_states_map
+        # Check if any state in current_states contains a final state
+        for state in current_states:
+            if state in afnd.final_states:
+                final_states.add(current_states)
+                break
 
-    return AFD(new_states, afnd.alphabet, afd_transitions, afnd.initial_state, final_states)
-
-
-
+    return AFD(new_states, afnd.alphabet, new_transitions, frozenset([afnd.initial_state]), final_states)
 
 
 
@@ -107,9 +97,9 @@ def main():
     # Convert AFND to AFD
     afd = afnd_to_afd(afnd)
 
-    # Save AFD to JSON
+    # Save AFD to JSON with custom encoder
     with open('AFD.json', 'w') as file:
-        json.dump(afd.to_dict(), file, indent=4)
+        json.dump(afd.to_dict(), file, indent=4, cls=FrozenSetEncoder)
 
 if __name__ == "__main__":
     main()
