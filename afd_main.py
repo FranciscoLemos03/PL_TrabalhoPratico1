@@ -1,90 +1,33 @@
-import graphviz  # doctest: +NO_EXE
 import json
-import ast
 import sys
+import graphviz
+import graphviz #doctest: +NO_EXE
 
-class AFD:
-    def __init__(self, states, alphabet, transitions, initial_state, final_states):
-        self.states = states
-        self.alphabet = alphabet
-        self.transitions = transitions
-        self.initial_state = initial_state
-        self.final_states = final_states
+def load_dfa(file_path):
+    with open(file_path, 'r') as f:
+        dfa = json.load(f)
+    return dfa
 
-def load_afd_from_file(filename):
-    with open(filename, "r", encoding="utf-8") as f:
-        afd_data = json.load(f)
+def is_valid_word(dfa, word, state='q0', path=[]):
+    if len(word) == 0:
+        return state in dfa['F'], path
 
-    # Flatten the states from nested lists to a single set
-    states = set()
-    for state_list in afd_data["states"]:
-        states.update(state_list)
+    if state not in dfa['delta'] or word[0] not in dfa['delta'][state]:
+        return False, None
 
-    # Convert transitions keys directly to strings
-    transitions = {}
-    for key, value in afd_data["transitions"].items():
-        transitions[key] = value
+    input_symbol = word[0]
+    new_state = dfa['delta'][state][input_symbol]
+    new_path = path + [f"{state}-{input_symbol}"]  # Append state along with input symbol
+    return is_valid_word(dfa, word[1:], new_state, new_path)
 
-    return AFD(
-        states=states,
-        alphabet=set(afd_data["alphabet"]),
-        transitions=transitions,
-        initial_state=afd_data["initial_state"],
-        final_states=set(afd_data["final_states"])
-    )
-
-
-def verifica_afd(afd):
-    # Verificar se os campos obrigatórios estão presentes
-    campos_obrigatorios = ["states", "alphabet", "transitions", "initial_state", "final_states"]
-    for campo in campos_obrigatorios:
-        if not hasattr(afd, campo):
-            print(f"Falta o campo obrigatório '{campo}'", file=sys.stderr)
-            return False
-    
-    # Verificar se o conjunto de estados finais está contido no conjunto de estados
-    if not afd.final_states.issubset(afd.states):
-        print("Conjunto de estados finais não está contido no conjunto de estados", file=sys.stderr)
-        return False
-    
-    # Verificar se a função de transição está bem definida
-    for estado, transicoes in afd.transitions.items():
-        if estado not in afd.states:
-            print(f"Estado '{estado}' nas transições não está no conjunto de estados", file=sys.stderr)
-            return False
-        for simbolo, destino in transicoes.items():
-            if simbolo not in afd.alphabet:
-                print(f"Símbolo '{simbolo}' nas transições não está no alfabeto", file=sys.stderr)
-                return False
-            if destino not in afd.states:
-                print(f"Destino '{destino}' nas transições não está no conjunto de estados", file=sys.stderr)
-                return False
-    
-    print("Autômato está corretamente estruturado de acordo com as regras de um AFD")
-    return True
-
-# Load AFD from file
-try:
-    af = load_afd_from_file('AFD.json')
-    verifica_afd(af)
-except Exception as e:
-    print(f"Error loading AFD from file: {e}", file=sys.stderr)
-
-
-
-
-
-# Verificar se o autômato está corretamente estruturado
-
-
-def gerar_grafo(nome_arquivo, afd):
-    grafo = afd.transitions
+def gerar_grafo(nome_arquivo, dfa):
+    grafo = dfa['delta']
 
     with open(nome_arquivo + '.dot', 'w') as arquivo:
         arquivo.write('digraph ' + nome_arquivo + ' {\n')
         arquivo.write('\trankdir=LR;\n')
         arquivo.write('\tsize="8,5"\n')
-        arquivo.write('\tnode [shape = doublecircle]; ' + ' '.join(afd.final_states) + '\n')
+        arquivo.write('\tnode [shape = doublecircle]; ' + ' '.join(dfa['F']) + '\n')
         arquivo.write('\tnode [shape = circle];\n')
 
         for origem, destinos in grafo.items():
@@ -93,5 +36,49 @@ def gerar_grafo(nome_arquivo, afd):
 
         arquivo.write('}\n')
 
+    print("\nGraph file generated:", nome_arquivo + '.dot\n')
 
-gerar_grafo('grafo', af)
+
+def main():
+    if len(sys.argv) < 4:
+        print("Usage: python afd_main.py AFD.json -rec <word>")
+        return
+
+    file_path = sys.argv[1]
+    if sys.argv[2] != "-rec":
+        print("Usage: python afd_main.py AFD.json -rec <word>")
+        return
+
+    word = sys.argv[3]
+
+    dfa = load_dfa(file_path)
+    gerar_grafo('grafo', dfa)  # Call gerar_grafo after dfa is loaded
+
+    num_states = len(dfa['Q'])
+
+    if len(word) > num_states:
+        print(f"The word '{word}' is not valid.")
+        return
+    elif len(word) == 1:
+        initial_state = dfa['Q'][0]
+        transition = dfa['delta'][initial_state]
+        input_symbol = list(transition.keys())[0]
+        if word == input_symbol:
+            print(f"The word '{word}' is valid\n")
+            print(f"{initial_state}-{word}")
+            return
+        else:
+            print(f"The word '{word}' is not valid\n")
+            return  
+
+    valid, path = is_valid_word(dfa, word)
+
+    if valid:
+        print(f"The word '{word}' is valid.\n")
+        # Print the path
+        print("Path:", " -> ".join(path))
+    else:
+        print(f"The word '{word}' is not valid.\n")
+
+if __name__ == "__main__":
+    main()

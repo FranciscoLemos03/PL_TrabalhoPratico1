@@ -1,105 +1,64 @@
 import json
 
-class AFND:
-    def __init__(self, states, alphabet, transitions, initial_state, final_states):
-        self.states = states
-        self.alphabet = alphabet
-        self.transitions = transitions
-        self.initial_state = initial_state
-        self.final_states = final_states
+def epsilon_closure(states, delta):
+    closure = set(states)
+    stack = list(states)
+    while stack:
+        state = stack.pop()
+        if "" in delta.get(state, {}):
+            new_states = delta[state][""]
+            for new_state in new_states:
+                if new_state not in closure:
+                    closure.add(new_state)
+                    stack.append(new_state)
+    return closure
 
-class AFD:
-    def __init__(self, states, alphabet, transitions, initial_state, final_states):
-        self.states = states
-        self.alphabet = alphabet
-        self.transitions = transitions
-        self.initial_state = initial_state
-        self.final_states = final_states
+def move(states, symbol, delta):
+    result = set()
+    for state in states:
+        transitions = delta.get(state, {})
+        if symbol in transitions:
+            result.update(transitions[symbol])
+    return result
 
-    def to_dict(self):
-        transitions_dict = {}
-        for key, value in self.transitions.items():
-            state_list = list(key)
-            value_dict = {}
-            for symbol, destination in value.items():
-                value_dict[symbol] = list(destination)
-            transitions_dict[state_list[0]] = value_dict
-        return {
-            'states': [list(state) for state in self.states],
-            'alphabet': list(self.alphabet),
-            'transitions': transitions_dict,
-            'initial_state': list(self.initial_state)[0],
-            'final_states': [list(state) for state in self.final_states]
-        }
 
-class FrozenSetEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, frozenset):
-            return list(obj)
-        return json.JSONEncoder.default(self, obj)
-
-def afnd_to_afd(afnd):
-    queue = [frozenset([afnd.initial_state])]
-    visited = set()
-    new_states = set()
-    new_transitions = {}
-    final_states = set()  # Create an empty set for final states
-
+def nfa_to_dfa(nfa):
+    V = nfa["V"]
+    Q = []
+    delta = {}
+    q0 = nfa["q0"]
+    F = []
+    queue = [epsilon_closure([q0], nfa["delta"])]
+    dfa_states_map = {}
+    dfa_states_map[frozenset(queue[0])] = "q0"
     while queue:
         current_states = queue.pop(0)
-        if current_states in visited:
-            continue
-        visited.add(current_states)
-
-        new_states.add(current_states)
-
-        transitions = {}
-        for symbol in afnd.alphabet:
-            next_states = set()
-            for state in current_states:
-                next_states.update(afnd.transitions.get((state, symbol), []))
-                next_states.update(afnd.transitions.get((state, ''), []))
+        current_dfa_state = dfa_states_map[frozenset(current_states)]
+        Q.append(current_dfa_state)
+        for symbol in V:
+            next_states = epsilon_closure(move(current_states, symbol, nfa["delta"]), nfa["delta"])
             if next_states:
-                next_states_frozen = frozenset(next_states)
-                if next_states_frozen not in new_states:
-                    queue.append(next_states_frozen)
-                transitions[symbol] = next_states_frozen
-
-        new_transitions[current_states] = transitions
-
-        # Check if any state in current_states contains a final state
-        for state in current_states:
-            if state in afnd.final_states:
-                final_states.add(current_states)
-                break
-
-    return AFD(new_states, afnd.alphabet, new_transitions, frozenset([afnd.initial_state]), final_states)
-
-
-
-
-
+                if frozenset(next_states) not in dfa_states_map:
+                    queue.append(next_states)
+                    dfa_states_map[frozenset(next_states)] = "q" + str(len(dfa_states_map))
+                delta.setdefault(current_dfa_state, {})
+                delta[current_dfa_state][symbol] = dfa_states_map[frozenset(next_states)]
+        if any(state in nfa["F"] for state in current_states):
+            F.append(current_dfa_state)
+    return {"V": V, "Q": Q, "delta": delta, "q0": q0, "F": F}
 
 
 def main():
-    # Load AFND from JSON
-    with open('AFND.json', 'r') as file:
-        afnd_json = json.load(file)
+    # Read NFA from JSON file
+    with open("AFND.json", "r") as f:
+        nfa = json.load(f)
 
-    afnd = AFND(
-        set(afnd_json['states']),
-        set(afnd_json['alphabet']),
-        {eval(k): v for k, v in afnd_json['transitions'].items()},
-        afnd_json['initial_state'],
-        set(afnd_json['final_states'])
-    )
+    # Convert NFA to DFA
+    dfa = nfa_to_dfa(nfa)
 
-    # Convert AFND to AFD
-    afd = afnd_to_afd(afnd)
-
-    # Save AFD to JSON with custom encoder
-    with open('AFD.json', 'w') as file:
-        json.dump(afd.to_dict(), file, indent=4, cls=FrozenSetEncoder)
+    # Save DFA to JSON file
+    with open("AFD.json", "w") as f:
+        json.dump(dfa, f, indent=2)
 
 if __name__ == "__main__":
     main()
