@@ -1,5 +1,6 @@
 import json
 
+#Função que recebe o afnd.json e converte em afd.json 
 def epsilon_closure(states, delta):
     closure = set(states)
     stack = list(states)
@@ -49,14 +50,14 @@ def nfa_to_dfa(nfa):
 
 
 def main():
-    # Read NFA from JSON file
+    # Ler AFND do JSON file
     with open("AFND.json", "r") as f:
         nfa = json.load(f)
 
-    # Convert NFA to DFA
+    # converter AFND para AFD
     dfa = nfa_to_dfa(nfa)
 
-    # Format DFA structure
+    #Estrutura de AFD
     formatted_dfa = {
         "V": list(nfa["V"]),
         "Q": [f"q{i}" for i in range(len(dfa["Q"]))],
@@ -65,9 +66,12 @@ def main():
         "F": [state for state in dfa["Q"] if any(substate in nfa["F"] for substate in state.split(","))]
     }
 
-    # Save DFA to JSON file
+    #Salvar a estrutura no ficheiro AFD.json
     with open("AFD.json", "w") as f:
         json.dump(formatted_dfa, f, indent=4)
+
+    
+    print("Estrutura AFD JSON foi salva no ficheiro AFD.json.")
 
 
 if __name__ == "__main__":

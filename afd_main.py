@@ -3,11 +3,13 @@ import sys
 import graphviz
 import graphviz #doctest: +NO_EXE
 
+# Abrir ficheiro AFD.json
 def load_dfa(file_path):
     with open(file_path, 'r') as f:
         dfa = json.load(f)
     return dfa
 
+# Validar se a palavra segue o caminho do AFD.JSON
 def is_valid_word(dfa, word, state='q0', path=[]):
     if len(word) == 0:
         return state in dfa['F'], path
@@ -17,9 +19,10 @@ def is_valid_word(dfa, word, state='q0', path=[]):
 
     input_symbol = word[0]
     new_state = dfa['delta'][state][input_symbol]
-    new_path = path + [f"{state}-{input_symbol}"]  # Append state along with input symbol
+    new_path = path + [f"{state}-{input_symbol}"]
     return is_valid_word(dfa, word[1:], new_state, new_path)
 
+# Gerar o grafo fo graphviz
 def gerar_grafo(nome_arquivo, dfa):
     grafo = dfa['delta']
 
@@ -38,7 +41,7 @@ def gerar_grafo(nome_arquivo, dfa):
 
     print("\nGraph file generated:", nome_arquivo + '.dot\n')
 
-
+# Função principal que lê 
 def main():
     if len(sys.argv) < 4:
         print("Usage: python afd_main.py AFD.json -rec <word>")
@@ -52,7 +55,7 @@ def main():
     word = sys.argv[3]
 
     dfa = load_dfa(file_path)
-    gerar_grafo('grafo', dfa)  # Call gerar_grafo after dfa is loaded
+    gerar_grafo('grafo', dfa)  # Call gerar_grafo depois do AFD ser gerado
 
     num_states = len(dfa['Q'])
 
@@ -75,7 +78,7 @@ def main():
 
     if valid:
         print(f"The word '{word}' is valid.\n")
-        # Print the path
+        # Imprimir caminho
         print("Path:", " -> ".join(path))
     else:
         print(f"The word '{word}' is not valid.\n")
