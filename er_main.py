@@ -1,5 +1,6 @@
 import json
 
+# Função que recebe o er.json e converte em afnd.json 
 def construct_afnd(er_json):
     alphabet = set()
     states = set()
@@ -8,12 +9,14 @@ def construct_afnd(er_json):
 
     state_counter = 0
 
+    #gerar nome de estado
     def generate_state_name():
         nonlocal state_counter
         state_name = f"q{state_counter}"
         state_counter += 1
         return state_name
 
+    # percorrer er.json e construir afnd
     def traverse(node, current_state):
         nonlocal alphabet, states, transitions, final_states
 
@@ -42,7 +45,7 @@ def construct_afnd(er_json):
                         new_state = generate_state_name()
                         states.add(new_state)
                         traverse(arg, new_state)
-                        # Ensure the transition value is always a list
+                        #Verificar que o valor da transição é sempre lista
                         if arg.get("simb"):
                             transitions.setdefault(prev_state, {}).setdefault(arg["simb"], []).append(new_state)
                         else:
@@ -63,7 +66,7 @@ def construct_afnd(er_json):
     traverse(er_json, initial_state)
 
     return {
-        "V": sorted(list(alphabet)),  # Sort alphabet
+        "V": sorted(list(alphabet)),  #Sort alfabeto
         "Q": sorted(list(states)),
         "delta": transitions,
         "q0": initial_state,
@@ -75,12 +78,11 @@ def read_er_from_file(file_path):
         er_json = json.load(file)
     return er_json
 
-# Assuming ER.json file is located in the same directory as the Python script
 er_json = read_er_from_file("ER.json")
 
 afnd_json = construct_afnd(er_json)
 
-# Write AFND JSON structure into AFND.json file
+#Escrever o AFND é um ficheiro json .json
 with open("AFND.json", "w") as afnd_file:
     json.dump(afnd_json, afnd_file, indent=4)
 
