@@ -56,9 +56,19 @@ def main():
     # Convert NFA to DFA
     dfa = nfa_to_dfa(nfa)
 
+    # Format DFA structure
+    formatted_dfa = {
+        "V": list(nfa["V"]),
+        "Q": [f"q{i}" for i in range(len(dfa["Q"]))],
+        "delta": {state: {symbol: target_state for symbol, target_state in transitions.items() if ',' not in target_state and target_state.strip() != ""} for state, transitions in nfa["delta"].items() if ',' not in state},
+        "q0": dfa["q0"],
+        "F": [state for state in dfa["Q"] if any(substate in nfa["F"] for substate in state.split(","))]
+    }
+
     # Save DFA to JSON file
     with open("AFD.json", "w") as f:
-        json.dump(dfa, f, indent=2)
+        json.dump(formatted_dfa, f, indent=4)
+
 
 if __name__ == "__main__":
     main()
